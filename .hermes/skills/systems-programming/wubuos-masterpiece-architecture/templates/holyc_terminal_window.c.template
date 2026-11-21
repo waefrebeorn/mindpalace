@@ -1,0 +1,190 @@
+/*
+ * Template: HolyC Terminal Window Type
+ * 
+ * Copy this pattern to add new persistent-compiler window types
+ * (e.g., Python REPL, Lua console, custom DSL terminal)
+ */
+
+#include "dosgui_wm.h"
+#include "../compiler/holyc.h"
+
+/* === CONFIGURATION === */
+#define MY_TERM_MAX_LINES  2000
+#define MY_TERM_LINE_LEN   512
+#define MY_TERM_HISTORY    100
+#define MY_TERM_PROMPT     "$ "
+
+/* === TERMINAL STATE === */
+typedef struct {
+    HCCompiler       compiler;        /* Persistent compiler */
+    char             lines[MY_TERM_MAX_LINES][MY_TERM_LINE_LEN];
+    int              line_count;
+    char             input[MY_TERM_LINE_LEN];
+    int              input_pos;
+    int              cursor_blink;
+    char             history[MY_TERM_HISTORY][MY_TERM_LINE_LEN];
+    int              history_count;
+    int              history_pos;     /* -1 = current, 0..count-1 = history */
+    bool             initialized;
+} MyTerm;
+
+static MyTerm g_my_terms[DOSGUI_MAX_WINDOWS] = {0};
+
+/* === COMPILER INIT === */
+static void my_term_init_compiler(MyTerm *term) {
+    if (term->initialized) return;
+    hc_gen_init(&term->compiler.gen);
+    term->compiler.gen.symbols.n_locals = 0;
+    term->compiler.gen.symbols.stack_size = 0;
+    term->compiler.gen.n_functions = 0;
+    term->compiler.gen.label_count = 0;
+    term->initialized = true;
+}
+
+/* === OUTPUT BUFFER === */
+static void my_term_add_line(MyTerm *term, const char *line) {
+    if (term->line_count < MY_TERM_MAX_LINES) {
+        strncpy(term->lines[term->line_count], line, MY_TERM_LINE_LEN - 1);
+        term->lines[term->line_count][MY_TERM_LINE_LEN - 1] = '\0';
+        term->line_count++;
+    } else {
+        for (int i = 1; i < MY_TERM_MAX_LINES; i++)
+            strcpy(term->lines[i-1], term->lines[i]);
+        strncpy(term->lines[MY_TERM_MAX_LINES-1], line, MY_TERM_LINE_LEN - 1);
+    }
+}
+
+static void my_term_add_history(MyTerm *term, const char *line) {
+    if (term->history_count < MY_TERM_HISTORY) {
+        strncpy(term->history[term->history_count], line, MY_TERM_LINE_LEN - 1);
+        term->history_count++;
+    } else {
+        for (int i = 1; i < MY_TERM_HISTORY; i++)
+            strcpy(term->history[i-1], term->history[i]);
+        strncpy(term->history[MY_TERM_HISTORY-1], line, MY_TERM_LINE_LEN - 1);
+    }
+    term->history_pos = -1;
+}
+
+/* === EVALUATION === */
+static void my_term_eval(MyTerm *term, const char *input) {
+    if (!input || !input[0]) return;
+    my_term_add_history(term, input);
+    
+    char echo[MY_TERM_LINE_LEN + 8];
+    snprintf(echo, sizeof(echo), "%s%s", MY_TERM_PROMPT, input);
+    my_term_add_line(term, echo);
+    
+    int64_t result = hc_eval(input);  /* Uses persistent compiler! */
+    
+    char result_line[MY_TERM_LINE_LEN];
+    snprintf(result_line, sizeof(result_line), "= %ld", (long)result);
+    my_term_add_line(term, result_line);
+}
+
+/* === DRAW === */
+static void my_term_draw(DosGuiWindow *win, uint32_t *fb, int fb_w, int fb_h) {
+    (void)fb; (void)fb_w; (void)fb_h;
+    MyTerm *term = (MyTerm*)win->user_data;
+    if (!term) return;
+    
+    const int tbh = title_bar_height();
+    const int bw = border_width();
+    int cx = win->x + bw;
+    int cy = win->y + tbh;
+    int cw = win->w - 2 * bw;
+    int ch = win->h - tbh - bw;
+    
+    vbe_fill_rect(cx, cy, cw, ch, 0x00000000);
+    
+    int x = cx + 4;
+    int y = cy + 4;
+    int line_h = 10;
+    int max_visible = (ch - 8) / line_h;
+    int start = term->line_count - max_visible;
+    if (start < 0) start = 0;
+    
+    for (int i = start; i < term->line_count; i++) {
+        if (y + line_h > cy + ch - 4) break;
+        vbe_draw_text(x, y, term->lines[i], 0x00FFFFFF, 1);
+        y += line_h;
+    }
+    
+    if (y + line_h <= cy + ch - 4) {
+        char prompt[MY_TERM_LINE_LEN + 8];
+        snprintf(prompt, sizeof(prompt), "%s%s", MY_TERM_PROMPT, term->input);
+        vbe_draw_text(x, y, prompt, 0x00FFFF00, 1);
+        
+        term->cursor_blink++;
+        if ((term->cursor_blink / 5) % 2 == 0) {
+            int cx_pos = x + (strlen(MY_TERM_PROMPT) + term->input_pos) * 8;
+            vbe_vline(cx_pos, y, y + 8, 0x00FFFF00);
+        }
+    }
+}
+
+/* === INPUT === */
+static void my_term_key(DosGuiWindow *win, uint32_t key, uint32_t mods) {
+    (void)mods;
+    MyTerm *term = (MyTerm*)win->user_data;
+    if (!term) return;
+    
+    if (key == '\n' || key == '\r') {
+        if (term->input[0]) {
+            my_term_eval(term, term->input);
+            term->input[0] = '\0';
+            term->input_pos = 0;
+        }
+    } else if (key == 8 && term->input_pos > 0) {
+        term->input[--term->input_pos] = '\0';
+    } else if (key == 0xE048) {  /* Up */
+        if (term->history_count > 0 && term->history_pos < term->history_count - 1) {
+            if (term->history_pos == -1)
+                strcpy(term->history[term->history_count], term->input);
+            term->history_pos++;
+            strcpy(term->input, term->history[term->history_count - 1 - term->history_pos]);
+            term->input_pos = strlen(term->input);
+        }
+    } else if (key == 0xE050) {  /* Down */
+        if (term->history_pos > 0) {
+            term->history_pos--;
+            strcpy(term->input, term->history[term->history_count - 1 - term->history_pos]);
+            term->input_pos = strlen(term->input);
+        } else if (term->history_pos == 0) {
+            term->history_pos = -1;
+            strcpy(term->input, term->history[term->history_count]);
+            term->input_pos = strlen(term->input);
+        }
+    } else if (key >= 32 && key < 127 && term->input_pos < MY_TERM_LINE_LEN - 1) {
+        term->input[term->input_pos++] = (char)key;
+        term->input[term->input_pos] = '\0';
+    }
+}
+
+/* === SPAWN API === */
+DosGuiWindow *dosgui_wm_spawn_my_term(int x, int y, int w, int h) {
+    DosGuiWindow *win = dosgui_wm_create(x, y, w, h, "My Terminal");
+    if (!win) return NULL;
+    
+    int idx = -1;
+    for (int i = 0; i < DOSGUI_MAX_WINDOWS; i++) {
+        if (&g_dwm.windows[i] == win) { idx = i; break; }
+    }
+    if (idx < 0) return NULL;
+    
+    MyTerm *term = &g_my_terms[idx];
+    memset(term, 0, sizeof(*term));
+    my_term_init_compiler(term);
+    
+    win->on_draw = my_term_draw;
+    win->on_key = my_term_key;
+    win->user_data = term;
+    
+    my_term_add_line(term, "My Terminal v1.0");
+    my_term_add_line(term, "Type code. Enter to eval.");
+    my_term_add_line(term, "");
+    
+    return win;
+}
+
+#endif

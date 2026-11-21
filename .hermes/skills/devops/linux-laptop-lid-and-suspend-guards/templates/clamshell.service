@@ -1,0 +1,15 @@
+[Unit]
+Description=Lid guard (panel off on close, sleep inhibited)
+After=graphical-session.target
+
+[Service]
+Type=simple
+# Wrap the WHOLE unit in the inhibitor; never background it inside the script.
+ExecStart=/usr/bin/systemd-inhibit --what=sleep:handle-lid-switch --mode=block \
+    --who=wubu-clamshell --why="clamshell mode: keep working with the lid shut" \
+    %h/.local/bin/wubu-clamshell-guard.sh
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target
