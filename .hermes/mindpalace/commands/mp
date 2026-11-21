@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# mp -- Mind Palace CLI (canonical). Wired to the real tools.
+set -u
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MP_DIR="${MP_DIR:-$HERE}"
+PY="$(command -v python3 || command -v python)"
+nat() { cygpath -m "$1" 2>/dev/null || echo "$1"; }
+MP_NATIVE="$(nat "$MP_DIR")"
+IDX="$MP_NATIVE/tools/index_repo.py"
+VER="$MP_NATIVE/tools/verify_mindpalace.py"
+REV="$MP_NATIVE/tools/review_1000.py"
+
+usage() {
+  cat <<EOF
+mp <command> [args]
+
+  orient [repo]        rebuild INDEX.md, verify paths/skills, list claims
+  attack <claim>       four-phase DA: ORIENT / ATTACK / CLOSE / PRESTIGE
+  close <finding>      smallest real increment + negative control
+  prestige             update slate, steps, handoff; verify gates
+  index [--write]      SHA-256 index of every file
+  verify               hard gate: required files, dead paths, skill contract
+  review --passes=N    generate 1000-pass review packs (idempotent)
+  status               show slate + review progress
+  skills ls|view       list / view palace skills
+  help                 this screen
+EOF
+}
+
+need_py() { if [[ -z "$PY" ]]; then echo "python not found"; exit 1; fi; }
+
+case "${1:-help}" in
+  orient)
+    need_py; shift
+    echo "== orient: rebuilding index =="
+    "$PY" "$IDX" --root "${1:-$MP_DIR}" --write 2>/dev/null || "$PY" "$IDX" --root "$MP_NATIVE" --write
+    echo "== orient: verifying =="
+    "$PY" "$VER" --root "$MP_NATIVE"
+    echo "== claims are hypotheses until gated; see DEVILS_ADVOCATE.md =="
+    ;;
+  attack)
+    shift; echo "== ATTACK: claim: $* =="
+    cat "$MP_DIR/DEVILS_ADVOCATE.md"
+    ;;
+  close)
+    shift; echo "== CLOSE: $* =="
+    echo "Smallest real increment + negative control + gate. Record STATUS, never 'honest gap'."
+    ;;
+  prestige)
+    echo "== PRESTIGE =="; cat "$MP_DIR/PRESTIGE.md"
+    "$PY" "$VER" --root "$MP_NATIVE" || true
+    ;;
+  index)
+    need_py; shift; "$PY" "$IDX" --root "$MP_NATIVE" "$@"
+    ;;
+  verify)
+    need_py; shift; "$PY" "$VER" --root "$MP_NATIVE" "$@"
+    ;;
+  review)
+    need_py; shift; "$PY" "$REV" --root "$MP_NATIVE" --write "$@"
+    ;;
+  status)
+    echo "== slate =="; cat "$MP_DIR/slates/active.yaml" 2>/dev/null || echo "(no active slate)"
+    echo "== review state =="; cat "$MP_DIR/sessions/review-1000/REVIEW.md" 2>/dev/null || echo "(no review state)"
+    ;;
+  skills)
+    sub="${2:-ls}"
+    if [[ "$sub" == "ls" ]]; then
+      find "$MP_DIR/skills" -name SKILL.md 2>/dev/null | \
+        sed "s|$MP_DIR/skills/||;s|/SKILL.md||" | sort
+    elif [[ "$sub" == "view" ]]; then
+      cat "$MP_DIR/skills/${3:-mp}/SKILL.md"
+    else echo "unknown: $sub"; exit 1; fi
+    ;;
+  help|-h|--help) usage ;;
+  *) echo "unknown command: $1"; usage; exit 1 ;;
+esac

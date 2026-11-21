@@ -1,0 +1,15 @@
+slate_id: aggregate-mindpalace-skills
+created_at: 2026-11-21T11:20:00Z
+updated_at: 2026-11-21T11:20:00Z
+branch: null
+status: active
+stages_run:
+  - bootstrap
+  - repo-view-da-audit
+  - skill-aggregation
+  - tooling-wire
+max_passes: 1000
+pass_count: 4
+loop_state: prestige
+subject: Aggregate all mindpalace skills and wire the looping 1000-step DA review
+summary: Router + 5 companion skills + 8 references + working CLI/index/verifier/review generator.

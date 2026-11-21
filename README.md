@@ -54,3 +54,25 @@ files by path only.
 ## License
 
 WaefreBeorn Umbrella License v3.0. See `LICENSE`.
+
+
+## Completed palace (2026-11-21)
+
+The scaffold is now a working system. `.hermes/mindpalace/` is the canonical,
+verifiable palace; `.hermes/skills/` carries the aggregated skill family.
+
+- `mp` router + 5 companion skills: `mp-devils-advocate`, `mp-review-1000`,
+  `mp-phase-plane`, `mp-prestige`, `mp-index`, with 8 reference docs.
+- `commands/mp` dispatches orient / attack / close / prestige / index /
+  verify / review / status / skills (previously "Not yet wired").
+- `tools/review_1000.py` generates the 1000-pass loop as 250 packs
+  (4000 phase steps), idempotently.
+- `tools/index_project.py` indexes all tracked source files of a git repo,
+  excluding generated gates/binaries, hashing in parallel.
+- `tools/verify_mindpalace.py` fails on dead doc paths, stale SHAs, or an
+  invalid SKILL.md contract.
+
+```bash
+bash .hermes/mindpalace/commands/mp verify --strict-paths
+bash .hermes/mindpalace/commands/mp review --passes=1000
+```
