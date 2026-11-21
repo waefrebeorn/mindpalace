@@ -9,6 +9,9 @@ is not a step; it is an opinion.
 2. Verify each state claim against its artifact: `git rev-parse`, gate log,
    file content, running process. A path named in a doc that does not exist
    is a build failure.
+2b. Verify reachability in the built product: does the object export symbols
+   (`nm -g --defined-only`)? Is there a caller? Does the binary exist and run?
+   A source file with a green harness but no caller is a claim, not a port.
 3. Research the state of the art on the SAME problem (primary sources only):
    what path did reference systems choose, and what is their smoke standard?
 4. Write the claim as a falsifiable sentence.
@@ -20,6 +23,9 @@ is not a step; it is an opinion.
 3. Run an independent oracle (host tool, native execution, second implementation).
 4. Check the security/contract surface: fail-closed tables, pointer
    boundaries, dispatch collisions, shape-vs-value assertions.
+4b. Attack the metric: survey ALL objects with the same shape, not just the
+   one under review. A detector + tracked baseline catches new dead credit
+   that a single inspection misses. Strip redundant claims; keep live owners.
 5. **Run the negative control against the PRE-FIX implementation.** A gate
    that passes with and without the fix is not a gate.
 

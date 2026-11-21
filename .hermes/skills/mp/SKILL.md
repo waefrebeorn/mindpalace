@@ -35,9 +35,14 @@ Devil's Advocate review, or wants the durable skill layer of another agent.
    VERIFIED_NEGATIVE with exact refusal output.
 4. Skill descriptions must be <=60 chars. Dead paths in docs are failures.
 5. Write the next step before stopping; writing the handoff is not completion.
+6. **Repo-view DA:** before believing any port claim, check object symbols
+   (`nm -g`), callers, and the running artifact. A green leaf oracle on a
+   dead object is not progress. See `references/repo-view-da.md`.
 
 ## References
 
+- `references/repo-view-da.md` -- evidence ladder, dead-credit guard, continuous
+  execution (the repo-view sauce).
 - `.hermes/mind-palace/INDEX.md` -- all files.
 - `.hermes/mind-palace/DEVILS_ADVOCATE.md` -- loop protocol.
 - `.hermes/mind-palace/ROADMAP.md` -- extension phase plane.

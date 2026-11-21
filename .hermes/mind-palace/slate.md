@@ -2,7 +2,11 @@
 
 ## Active step
 
-- Step 0001: establish the palace as a cloneable repo with a verified index.
+- Step 0002: repo-view dead-credit audit -- CLOSED (see STEPLOG.md).
+- Step 0003: install all 113 repo-only skills locally; carry repo-view DA into
+  the `mp` alias and the four-phase protocol.
+- Standing: work the 256 remaining wired-dead objects by connect-or-strip,
+  then the 398 placeholder clusters, with the pre-dispatch guard green.
 
 ## Standing directive
 
