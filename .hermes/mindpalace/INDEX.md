@@ -1,11 +1,11 @@
 # Mind Palace Index
 
 Files: 287
-Bytes: 1347674
+Bytes: 1347601
 
-- `DEVILS_ADVOCATE.md` [debb0e9fd633]
-- `INDEX.md` [fdd4f455dd57]
-- `PRESTIGE.md` [fd51aed92a1f]
+- `DEVILS_ADVOCATE.md` [48168417214c]
+- `INDEX.md` [125d4ad5e40a]
+- `PRESTIGE.md` [05372b62fa2b]
 - `README.md` [f31c2f8edd40]
 - `ROADMAP.md` [9ff7abb8c13b]
 - `STEPLOG.md` [7e62d1c07b38]
